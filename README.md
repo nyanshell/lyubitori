@@ -32,3 +32,4 @@ APP_CLIENT_KEY=<api-key> APP_CLIENT_SECRET=<api-secret-key> RESOURCE_OWNER_KEY=<
 - call image classification API to tag images & add results to elasticsearch
 - ~~[protected media could be downloaded with Oauth signing](https://developer.twitter.com/en/docs/twitter-api/v1/data-dictionary/object-model/entities#media)(tested)[DONE]~~
 - ~~Github Actions[DONE]~~
+- save tweet text for further analysis
