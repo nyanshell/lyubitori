@@ -13,16 +13,13 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - { name: Linux, distro: ubuntu-latest, toolchain: stable }
-          - { name: Windows, distro: windows-latest, toolchain: stable }
-          - { name: macOS, distro: macOS-latest, toolchain: stable }
+          - { name: Windows, distro: windows-latest, toolchain: nightly }
+          - { name: macOS, distro: macOS-latest, toolchain: nightly }
           - { name: Linux, distro: ubuntu-latest, toolchain: nightly }
         test:
           - { name: Debug, flag: }
         include:
           - platform: { name: Linux, distro: ubuntu-latest, toolchain: nightly }
-            test: { name: Core, flag: "--core" }
-          - platform: { name: Linux, distro: ubuntu-latest, toolchain: stable }
             test: { name: Release, flag: "--release" }
 
     runs-on: ${{ matrix.platform.distro }}
