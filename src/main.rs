@@ -9,7 +9,7 @@ use tokio::runtime::Runtime;
 use futures::{stream, StreamExt};
 
 use egg_mode::raw::auth::{RequestBuilder, Method};
-use egg_mode::raw::{ParamList, response_json};
+use egg_mode::raw::{ParamList, response_json, response_raw_bytes};
 use egg_mode::Response;
 
 
@@ -113,12 +113,13 @@ impl TweetsImagesDownloadController {
         // download images
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
-            let client = reqwest::Client::new();
+            let (conn_token, resource_token) = &self.get_tokens().unwrap();
             let responses = stream::iter(&media_urls).map(|url| {
-                let client = &client;
                 let save_path = &save_path;
+                let conn_token = &conn_token;
+                let resource_token = &resource_token;
                 async move {
-                    match save_photo(client, url, save_path).await {
+                    match save_photo(conn_token, resource_token, &url.to_string(), save_path).await {
                         Ok(()) => {
                             println!("{} downloaded", &url);
                             1
@@ -192,17 +193,22 @@ fn remove_quotation(s: &String) -> Result<String, Box<dyn std::error::Error>> {
     Ok(s.to_string()[1..s.to_string().len()-1].to_string())
 }
 
-async fn save_photo(client: &reqwest::Client, img_url: &str, save_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let img_format = img_url.rsplit('.').next().ok_or("url error")?;
-    let params = [
-        ("format", img_format),
-        ("name", "orig")];
-    let url = reqwest::Url::parse_with_params(img_url, &params)?;
-    let resp = client.get(url).send().await?;
-    let fname = resp.url().path().rsplit('/').next().ok_or("path error")?;
+async fn save_photo(conn_token: &egg_mode::KeyPair, resource_token: &egg_mode::KeyPair, img_url: &String, save_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+
+    let url = img_url.clone();
+    let img_format = url.rsplit('.').next().ok_or("url error")?;
+    let params = ParamList::new()
+        .add_param("format", img_format.to_string())
+        .add_param("name", "orig");
+    let request = RequestBuilder::new(Method::GET, img_url)
+        .with_query_params(&params)
+        .request_keys(conn_token, Some(resource_token));
+    let bytes: Vec<u8> = response_raw_bytes(request).await?.1;
+
+    let fname = img_url.rsplit('/').next().ok_or("path error")?;
     create_dir_all(save_path)?;
     let mut buffer = File::create(save_path.join(fname))?;
-    buffer.write_all(&resp.bytes().await?)?;
+    buffer.write_all(&bytes)?;
     Ok(())
 }
 
