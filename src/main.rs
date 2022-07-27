@@ -85,20 +85,19 @@ impl TweetsImagesDownloadController {
         let request = RequestBuilder::new(Method::GET, TWEET_USER_SETTING_API)
             .request_keys(conn_token, Some(resource_token));
         let rt = Runtime::new().unwrap();
-        let _json: Response<serde_json::Value> = rt.block_on(response_json(request))?;
-        let screen_name = remove_quotation(&_json.response.get("screen_name").ok_or("no screen name")?.to_string())?;
-        Ok(screen_name)
+        let json: Response<serde_json::Value> = rt.block_on(response_json(request))?;
+        let screen_name = &json.response["screen_name"].as_str().expect("no screen name").to_string();
+        Ok(screen_name.to_string())
     }
 
     fn update_images(&self, tweets: Vec<serde_json::value::Value>, save_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         let mut media_urls = vec![];
-        // let mut media_urls = vec![];
         for tweet in tweets {
             if tweet["extended_entities"]["media"].is_array() {
                 let media_list: Vec<serde_json::value::Value> = tweet["extended_entities"]["media"].as_array().ok_or("no media")?.to_vec();
                 for media in media_list {
-                    let media_type = remove_quotation(&media["type"].to_string())?;
-                    let url = &remove_quotation(&media["media_url_https"].to_string())?.to_string();
+                    let media_type = &media["type"].as_str().expect("no media type").to_string();
+                    let url = &media["media_url_https"].as_str().expect("no media https url").to_string();
                     match media_type.as_str() {
                         "photo" =>  {
                             media_urls.push(url.clone())
@@ -193,10 +192,6 @@ impl TweetsImagesDownloadController {
         Ok(())
     }
 
-}
-
-fn remove_quotation(s: &String) -> Result<String, Box<dyn std::error::Error>> {
-    Ok(s.to_string()[1..s.to_string().len()-1].to_string())
 }
 
 fn find_max_bitrate_url(variants: &[serde_json::value::Value]) -> Result<String, Box<dyn std::error::Error>> {
