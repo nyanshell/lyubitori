@@ -92,6 +92,7 @@ impl TweetsImagesDownloadController {
 
     fn update_images(&self, tweets: Vec<serde_json::value::Value>, save_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         let mut media_urls = vec![];
+        // let mut media_urls = vec![];
         for tweet in tweets {
             if tweet["extended_entities"]["media"].is_array() {
                 let media_list: Vec<serde_json::value::Value> = tweet["extended_entities"]["media"].as_array().ok_or("no media")?.to_vec();
@@ -102,14 +103,19 @@ impl TweetsImagesDownloadController {
                         "photo" =>  {
                             media_urls.push(url.clone())
                         },
-                        "video" => println!("TODO: download {} video", media_type),
+                        "video" => {
+                            media_urls.push(url.clone()); // download thumbnail
+                            let video_url = find_max_bitrate_url(&media["video_info"]["variants"].as_array().expect("variants should be an list").to_vec());
+                            media_urls.push(video_url?.clone())
+                        },
+                        "animated_gif" => println!("TODO: download {} gif", media_type),
                         _ => println!("unsupported media type {}", media_type),
                     }
                 }
 
             }
         }
-        println!("parsed {} media urls", &media_urls.len());
+        println!("parsed {} image urls", &media_urls.len());
         // download images
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
@@ -193,19 +199,39 @@ fn remove_quotation(s: &String) -> Result<String, Box<dyn std::error::Error>> {
     Ok(s.to_string()[1..s.to_string().len()-1].to_string())
 }
 
-async fn save_photo(conn_token: &egg_mode::KeyPair, resource_token: &egg_mode::KeyPair, img_url: &String, save_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn find_max_bitrate_url(variants: &[serde_json::value::Value]) -> Result<String, Box<dyn std::error::Error>> {
+    let mut max_bitrate = 0;
+    let mut max_idx = 0;
+    for (i, variant) in variants.iter().enumerate() {
+        if variant["content_type"].as_str() != Some("application/x-mpegURL") && max_bitrate < variant["bitrate"].as_u64().unwrap_or(0) {
+            max_idx = i;
+            max_bitrate = variant["bitrate"].as_u64().unwrap_or(0);
+        }
+    }
+    Ok(variants[max_idx]["url"].as_str().expect("url convert error").to_string())
+}
 
-    let url = img_url.clone();
-    let img_format = url.rsplit('.').next().ok_or("url error")?;
-    let params = ParamList::new()
-        .add_param("format", img_format.to_string())
-        .add_param("name", "orig");
-    let request = RequestBuilder::new(Method::GET, img_url)
-        .with_query_params(&params)
-        .request_keys(conn_token, Some(resource_token));
+async fn save_photo(conn_token: &egg_mode::KeyPair, resource_token: &egg_mode::KeyPair, img_url: &str, save_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+
+    let url = img_url.to_owned();
+    let img_format = url.rsplit('.').next().ok_or("url error")?.split('?').next().ok_or("url parse error")?;
+    let request = match img_format {
+        "mp4" => {
+            RequestBuilder::new(Method::GET, img_url)
+                .request_keys(conn_token, Some(resource_token))
+        },
+        _ => {
+            let params = ParamList::new()
+                .add_param("format", img_format.to_string())
+                .add_param("name", "orig");
+            RequestBuilder::new(Method::GET, img_url)
+                .with_query_params(&params)
+                .request_keys(conn_token, Some(resource_token))
+        }
+    };
     let bytes: Vec<u8> = response_raw_bytes(request).await?.1;
 
-    let fname = img_url.rsplit('/').next().ok_or("path error")?;
+    let fname = img_url.rsplit('/').next().ok_or("path error")?.split('?').next().ok_or("url parse error")?;
     create_dir_all(save_path)?;
     let mut buffer = File::create(save_path.join(fname))?;
     buffer.write_all(&bytes)?;
