@@ -30,5 +30,5 @@ APP_CLIENT_KEY=<api-key> APP_CLIENT_SECRET=<api-secret-key> RESOURCE_OWNER_KEY=<
 - send update messages to slack if new images were added
 - update image meta data into elasticsearch
 - call image classification API to tag images & add results to elasticsearch
-- [protected media could be downloaded with Oauth signing](https://developer.twitter.com/en/docs/twitter-api/v1/data-dictionary/object-model/entities#media)(tested)
+- ~~[protected media could be downloaded with Oauth signing](https://developer.twitter.com/en/docs/twitter-api/v1/data-dictionary/object-model/entities#media)(tested)[DONE]~~
 - Github Actions
