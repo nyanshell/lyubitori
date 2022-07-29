@@ -33,3 +33,5 @@ APP_CLIENT_KEY=<api-key> APP_CLIENT_SECRET=<api-secret-key> RESOURCE_OWNER_KEY=<
 - ~~[protected media could be downloaded with Oauth signing](https://developer.twitter.com/en/docs/twitter-api/v1/data-dictionary/object-model/entities#media)(tested)~~[DONE]
 - ~~Github Actions~~[DONE]
 - save tweet text for further analysis
+- add a redownload switch, don't redownload existed file by default.
+- support download animated-gif
