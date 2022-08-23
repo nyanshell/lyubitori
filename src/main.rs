@@ -124,7 +124,7 @@ impl TweetsImagesDownloadController {
                 let conn_token = &conn_token;
                 let resource_token = &resource_token;
                 async move {
-                    match save_photo(conn_token, resource_token, &url.to_string(), save_path).await {
+                    match save_content(conn_token, resource_token, &url.to_string(), save_path).await {
                         Ok(()) => {
                             println!("{} downloaded", &url);
                             1
@@ -206,8 +206,12 @@ fn find_max_bitrate_url(variants: &[serde_json::value::Value]) -> Result<String,
     Ok(variants[max_idx]["url"].as_str().expect("url convert error").to_string())
 }
 
-async fn save_photo(conn_token: &egg_mode::KeyPair, resource_token: &egg_mode::KeyPair, img_url: &str, save_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+async fn save_content(conn_token: &egg_mode::KeyPair, resource_token: &egg_mode::KeyPair, img_url: &str, save_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
+    let fname = img_url.rsplit('/').next().ok_or("path error")?.split('?').next().ok_or("url parse error")?;
+    if save_path.join(fname).exists() {
+        return Ok(());
+    }
     let url = img_url.to_owned();
     let img_format = url.rsplit('.').next().ok_or("url error")?.split('?').next().ok_or("url parse error")?;
     let request = match img_format {
